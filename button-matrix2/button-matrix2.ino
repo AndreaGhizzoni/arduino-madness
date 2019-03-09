@@ -31,14 +31,15 @@ Keypad kpd = Keypad( makeKeymap(keys), rowPins, colPins, ROWS, COLS );
 String msg;
 
 void setup() {
-    Serial.begin(9600);
+    Serial.begin(2000000);
     /*
     loopCount = 0;
     startTime = millis();
     */
     msg = "";
-    pinMode(0, INPUT_PULLUP);
-    pinMode(1, INPUT_PULLUP);
+//    pinMode(A3, INPUT_PULLUP);
+    pinMode(A0, INPUT_PULLUP);
+    
     Joystick.begin();
 }
 
@@ -60,9 +61,9 @@ void loop() {
     }
     */
 
-    if( !digitalRead(0) )
-      Serial.println("0");
-    if( !digitalRead(1) )
+//    if( !digitalRead(A3) )
+//      Serial.println("0");
+    if( !digitalRead(A0) )
       Serial.println("1");
       
     // Fills kpd.key[ ] array with up-to 10 active keys.
