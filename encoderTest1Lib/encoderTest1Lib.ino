@@ -13,18 +13,13 @@
 
 Joystick_ Joystick;
 
-// Change these two numbers to the pins connected to your encoder.
-//   Best Performance: both pins have interrupt capability. 
-//                     Pin 2 & pin 3 di Arduino Uno 
-//   Good Performance: only the first pin has interrupt capability
-//   Low Performance:  neither pin has interrupt capability
-
-Encoder encoders[3] = { Encoder(0, 1), Encoder(2, 3), Encoder(4, 5) };
+// Encoder(CLK, DT)
+Encoder encoders[3] = { Encoder(1, 0), Encoder(2, 3), Encoder(4, 5) };
 int sizeofEncoders = 3;
 long encoderMIN = 0;
 long encoderMAX = 1023;
 long encoderSTEP = 50;
-long encoderStatus[3] = { encoderMAX/2, encoderMAX/2, encoderMAX/2 };
+long encoderStatus[3] = { encoderMAX, encoderMAX/2, encoderMAX/2 };
 
 void setup(){
   Serial.begin(2000000);
@@ -60,7 +55,7 @@ void applyToJoystick( int encoderIndex ){
 
 void readFrom( int encoderIndex ){
   long enc_pos = encoders[encoderIndex].read();
-  long axis_pos = mapEncoderPositionToJoystick( -enc_pos );
+  long axis_pos = mapEncoderPositionToJoystick( enc_pos );
   
   if( axis_pos != encoderStatus[encoderIndex] ) {
     encoderStatus[encoderIndex] = axis_pos;
