@@ -37,8 +37,7 @@ void setup() {
     startTime = millis();
     */
     msg = "";
-//    pinMode(A3, INPUT_PULLUP);
-    pinMode(A0, INPUT_PULLUP);
+    pinMode(A3, INPUT_PULLUP);
     
     Joystick.begin();
 }
@@ -61,9 +60,7 @@ void loop() {
     }
     */
 
-//    if( !digitalRead(A3) )
-//      Serial.println("0");
-    if( !digitalRead(A0) )
+    if( !digitalRead(A3) )
       Serial.println("1");
       
     // Fills kpd.key[ ] array with up-to 10 active keys.
