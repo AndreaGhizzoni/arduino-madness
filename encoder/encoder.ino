@@ -1,55 +1,31 @@
 /**
  * Tested with encoder KY-040
  */
-
 #include <Encoder.h>
-#include <Joystick.h>
 
-//#define DEBUG 0
-
-Joystick_ Joystick;
-
-long encoderMIN = 0;
-long encoderMAX = 1023;
-long encoderSTEP = 25;
-int RIGHT_ROTATION = -1;
-int LEFT_ROTATION = 1;
-const int sizeofEncoders = 3;
+const long ENCODER_MIN = 0;
+const long ENCODER_MAX = 1023;
+const long ENCODER_STEP = 25;
+const int RIGHT_ROTATION = -1;
+const int LEFT_ROTATION = 1;
+const int SIZE_OF_ENCODERS = 3;
 // Encoder(CLK_pin, DT_pin)
-Encoder encoders[sizeofEncoders] = { Encoder(1, 0), Encoder(2, 3), Encoder(4, 5) };
-long encoderStatus[3] = { 0, 0, 0 };
-long joystickValues[3] = { encoderMAX/2, encoderMAX/2, encoderMAX/2 };
+Encoder encoders[SIZE_OF_ENCODERS] = { Encoder(1, 0), Encoder(2, 3), Encoder(4, 5) };
+long encoderStatus[SIZE_OF_ENCODERS] = { 0, 0, 0 };
+long encodedValues[SIZE_OF_ENCODERS] = { ENCODER_MAX/2, ENCODER_MAX/2, ENCODER_MAX/2 };
 
 
 void setup(){
   Serial.begin(2000000);
-  Joystick.begin();
-
-  // Joystick.setRxAxisRange(encoderMIN, encoderMAX);
-  // Joystick.setRyAxisRange(encoderMIN, encoderMAX);
-  // Joystick.setRzAxisRange(encoderMIN, encoderMAX);
-
-  // for( int i=0; i<sizeofEncoders; i++ ){
-  //   applyValueToJoystick( i, joystickValues[i] );
-  // }
-}
-
-void applyValueToJoystick( int encoderIndex, long value ){
-  switch( encoderIndex ){
-    case 0: Joystick.setRxAxis( value ); break;
-    case 1: Joystick.setRyAxis( value ); break;
-    case 2: Joystick.setRzAxis( value ); break;
-  }
 }
 
 void stepEncoder( int encoderIndex, int rORl ){
-  joystickValues[encoderIndex] += (rORl)*encoderSTEP;
-  if( joystickValues[encoderIndex] > encoderMAX ){
-    joystickValues[encoderIndex] = encoderMAX;
-  }else if( joystickValues[encoderIndex] < encoderMIN ){
-    joystickValues[encoderIndex] = encoderMIN;
+  encodedValues[encoderIndex] += (rORl)*ENCODER_STEP;
+  if( encodedValues[encoderIndex] > ENCODER_MAX ){
+    encodedValues[encoderIndex] = ENCODER_MAX;
+  }else if( encodedValues[encoderIndex] < ENCODER_MIN ){
+    encodedValues[encoderIndex] = ENCODER_MIN;
   }
-  applyValueToJoystick( encoderIndex, joystickValues[encoderIndex] );
 }
 
 void readFromEncoder( int encoderIndex ){
@@ -58,27 +34,30 @@ void readFromEncoder( int encoderIndex ){
   
   if( enc_pos > encoderStatus[encoderIndex] ){ // right
     encoderStatus[encoderIndex] = enc_pos;
-    stepEncoder( encoderIndex, RIGHT_ROTATION ); 
+    stepEncoder( encoderIndex, RIGHT_ROTATION );
     
-    //if( DEBUG == 1) printDebugInfo( encoderIndex );
+    printDebugInfo( encoderIndex ); 
   }else if( enc_pos < encoderStatus[encoderIndex] ){ // left
     encoderStatus[encoderIndex] = enc_pos;
     stepEncoder( encoderIndex, LEFT_ROTATION ); 
     
-    //if( DEBUG == 1) printDebugInfo( encoderIndex );
+    printDebugInfo( encoderIndex );
   }
 }
 
-// void printDebugInfo( int encoderIndex ){
-//   Serial.print(encoderIndex);
-//   Serial.print(" - ");
-//   Serial.print(encoderStatus[encoderIndex]);
-//   Serial.print(" - ");
-//   Serial.println(joystickValues[encoderIndex]);
-// }
+void printDebugInfo( int encoderIndex ){
+  Serial.print("Encoder: ");
+  Serial.print(encoderIndex);
+  Serial.println("----------------------------");
+  Serial.print("Internal Encoder Status: ");
+  Serial.println(encoderStatus[encoderIndex]);
+  Serial.print("Encoded Status: ");
+  Serial.println(encodedValues[encoderIndex]);
+  Serial.println("======================================");
+}
 
 void loop(){
-  for( int i=0; i<sizeofEncoders; i++ ){
+  for( int i=0; i<SIZE_OF_ENCODERS; i++ ){
     readFromEncoder(i);
   }
 }

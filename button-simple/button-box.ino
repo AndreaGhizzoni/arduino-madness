@@ -1,5 +1,3 @@
-
-
 void setup() {
   Serial.begin(2000000);
 
