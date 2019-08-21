@@ -14,40 +14,43 @@ const int sizeofEncoders = 2;
 Encoder encoders[sizeofEncoders] = { Encoder(1, 0), Encoder(2, 3) }; // Encoder(CLK, DT)
 long joystickValues[sizeofEncoders] = { encoderMAX/2, encoderMAX/2 };
 long encoderStatus[sizeofEncoders] = { 0, 0 };
-//int encoderButton[sizeofEncoders] = {4, 5};
-//int encoderButtonState[sizeofEncoders] = {0, 0};
+int enableEncoderButtons = 0;
+int encoderButton[sizeofEncoders] = { 4, 5 };
+int encoderButtonState[sizeofEncoders] = { LOW, LOW };
 
-const byte ROWS = 4;
-const byte COLS = 3;
+const byte ROWS = 2;
+const byte COLS = 4;
 char keys[ROWS][COLS] = {
-  {'0', '1', '2'},
-  {'3', '4', '5'},
-  {'6', '7', '8'},
-  {'9', '!', '@'},
+  {'0', '1', '2', '.'},
+  {'3', '4', '5', '?'}
 };
-byte rowPins[ROWS] = {10,16,14,15};
-byte colPins[COLS] = {7,8,9};
+byte rowPins[ROWS] = {16,10};
+byte colPins[COLS] = {6,7,8,9};
 Keypad kpd = Keypad( makeKeymap(keys), rowPins, colPins, ROWS, COLS );
-int switchState = LOW;
-int switchPin = 6;
 
+const int sizeofSparePins = 3;
+int sparePin[sizeofSparePins] = {4, 5, 14};
+int sparePinState[sizeofSparePins] = {LOW, LOW, LOW};
+
+int switchPin = 15;
+int switchState = LOW;
 
 Joystick_ Joystick(
   0x04,     // joystick's unique HID
   JOYSTICK_TYPE_JOYSTICK, // HID input device type
   32,       // button count: default and max 32
   2,        // hat switches: default 2
-  false,    // include X Axis
-  false,    // include Y Axis
-  false,    // include Z Axis
-  false,    // include Rx Axis
-  false,    // include Ry Axis 
-  false,    // include Rz Axis 
-  false,    // include Rudder Axis
-  false,    // include Throttle Axis 
-  false,    // include Accelerator Axis
-  false,    // include Brake Axis
-  false     // include Steering Axis
+  true,    // include X Axis
+  true,    // include Y Axis
+  true,    // include Z Axis
+  true,    // include Rx Axis
+  true,    // include Ry Axis 
+  true,    // include Rz Axis 
+  true,    // include Rudder Axis
+  true,    // include Throttle Axis 
+  true,    // include Accelerator Axis
+  true,    // include Brake Axis
+  true     // include Steering Axis
 );
 
 void setup(){
@@ -68,9 +71,15 @@ void setup(){
 
   for( int i=0; i<sizeofEncoders; i++ ){
     applyValueToJoystick( i, joystickValues[i] );
+    if( enableEncoderButtons == 1 )
+      pinMode(encoderButton[i], INPUT_PULLUP);
   }
 
   pinMode(switchPin, INPUT_PULLUP);
+  
+  for( int j=0; j<sizeofSparePins; j++ ){
+    pinMode(sparePin[j], INPUT_PULLUP);
+  }
 }
 
 void applyValueToJoystick( int encoderIndex, long value ){
@@ -108,12 +117,12 @@ void readEncoder( int encoderIndex ){
     encoderStatus[encoderIndex] = enc_pos;
     stepJoystick( encoderIndex, RIGHT_STEP_ROTATION ); // right
     
-    if( DEBUG == 1) printDebugInfo( encoderIndex );
+    if( DEBUG == 1 ) printDebugInfo( encoderIndex );
   }else if( enc_pos < encoderStatus[encoderIndex] ){
     encoderStatus[encoderIndex] = enc_pos;
     stepJoystick( encoderIndex, LEFT_STEP_ROTATION ); // left
     
-    if( DEBUG == 1) printDebugInfo( encoderIndex );
+    if( DEBUG == 1 ) printDebugInfo( encoderIndex );
   }
 }
 
@@ -122,32 +131,15 @@ int convertChar2KeyStroke( char c ){
   int rowsTimesColumns = ROWS*COLS;
   for( int i=0; i<ROWS; i++ ){
     for( int j=0; j<COLS; j++ ){
-      if( c == keys[i][j] ) return (count++)+(switchState*rowsTimesColumns);
+      if( c == keys[i][j] ) return count+(switchState*rowsTimesColumns);
+      count++;
     }
   }
 }
 
-//int char2int( char c ){
-//  if(c=='0') return 0+(switchState*12);
-//  else if(c=='1') return 1+(switchState*12);
-//  else if(c=='2') return 2+(switchState*12);
-//  else if(c=='3') return 3+(switchState*12);
-//  else if(c=='4') return 4+(switchState*12);
-//  else if(c=='5') return 5+(switchState*12);
-//  else if(c=='6') return 6+(switchState*12);
-//  else if(c=='7') return 7+(switchState*12);
-//  else if(c=='8') return 8+(switchState*12);
-//  else if(c=='9') return 9+(switchState*12);
-//  else if(c=='!') return 10+(switchState*12);
-//  else if(c=='@') return 11+(switchState*12);
-//  else return -1;
-//}
-
-//int int2int( int e ){
-//  if( e == 0 ) return 31-(switchState*2);
-//  else if( e == 1 ) return 30-(switchState*2);
-//  else return -1;
-//}
+int convertInput2KeyStroke( int base, int i, int span ){
+  return base-i-(switchState*span);
+}
 
 void printDebugInfo( int encoderIndex ){
   Serial.print(encoderIndex);
@@ -162,19 +154,30 @@ void loop(){
   int currentSwitchState = !digitalRead(switchPin);
   if( currentSwitchState != switchState ){
     switchState = currentSwitchState;
+    if( DEBUG == 1 )
+      Serial.print("switch state: ");Serial.println(switchState);
+  }
+
+  // READING SPARE PINS
+  for( int i=0; i<sizeofSparePins; i++ ){
+    int sparePinCurrentState = !digitalRead( sparePin[i] );
+    if( sparePinCurrentState != sparePinState[i] ){
+      sparePinState[i] = sparePinCurrentState;
+      if( sparePinState[i] == HIGH ) Joystick.setButton( convertInput2KeyStroke(29, i, sizeofSparePins), 1 );
+      else if( sparePinState[i] == LOW ) Joystick.setButton( convertInput2KeyStroke(29, i, sizeofSparePins), 0 );
+    }
   }
 
   // READING ENCODER
   for( int i=0; i<sizeofEncoders; i++ ){
-//    int currentEncoderButtonState = !digitalRead(encoderButton[i]);
-//    if( currentEncoderButtonState != encoderButtonState[i] ){
-//      encoderButtonState[i] = currentEncoderButtonState;
-//      if( encoderButtonState[i] == HIGH )
-//        Joystick.setButton(int2int(i), 1);
-//      else if( encoderButtonState[i] == LOW )
-//        Joystick.setButton(int2int(i), 0);
-//    }
-    
+    if( enableEncoderButtons == 1 ){    
+      int currentEncoderButtonState = !digitalRead(encoderButton[i]);
+      if( currentEncoderButtonState != encoderButtonState[i] ){
+        encoderButtonState[i] = currentEncoderButtonState;
+        if( encoderButtonState[i] == HIGH ) Joystick.setButton(convertInput2KeyStroke(31, i, 2), 1);
+        else if( encoderButtonState[i] == LOW ) Joystick.setButton(convertInput2KeyStroke(31, i, 2), 0);
+      }
+    }
     readEncoder(i);
   }
 
@@ -186,10 +189,21 @@ void loop(){
       if( kpd.key[i].stateChanged ){   // Only find keys that have changed state.
         switch( kpd.key[i].kstate ) {  // Report active key state : IDLE, PRESSED, HOLD, or RELEASED
         case PRESSED:
+            if( DEBUG == 1 ){
+              Serial.print("press ");
+              Serial.print(kpd.key[i].kchar);Serial.print(" ");
+              Serial.println(convertChar2KeyStroke(kpd.key[i].kchar));
+            }
             Joystick.setButton(convertChar2KeyStroke(kpd.key[i].kchar), 1);
             break;
         case HOLD: break;
+            Serial.println("hold");
         case RELEASED:
+            if( DEBUG == 1 ){
+              Serial.print("released ");
+              Serial.print(kpd.key[i].kchar);Serial.print(" ");
+              Serial.println(convertChar2KeyStroke(kpd.key[i].kchar));
+            }
             Joystick.setButton(convertChar2KeyStroke(kpd.key[i].kchar), 0);
             break;
         case IDLE: break;
