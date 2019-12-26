@@ -4,38 +4,72 @@
 
 #define DEBUG 0
 
+// ARDUINO PRO MICRO PINOUT
+#define PIN_ONE 1
+#define PIN_ZERO 0
+#define PIN_TWO 2
+#define PIN_THREE 3
+#define PIN_FOUR 4
+#define PIN_FIVE 5
+#define PIN_SIX 6
+#define PIN_SEVEN 7
+#define PIN_EIGHT 8
+#define PIN_NINE 9
+#define PIN_TEN 10
+#define PIN_SIXTEEN 16
+#define PIN_FOURTEEN 14
+#define PIN_FIFTHTEEN 15
+// analog
+#define PIN_EIGHTTEEN 6
+#define PIN_NINETEEN 6
+#define PIN_TWENTY 6
+#define PIN_TWENTYONE 6
+
+
+//==========================================================================================
+// ENCODER SETTINGS
+//==========================================================================================
 #define ENCODER_MIN 0
 #define ENCODER_MAX 1023
 #define ENCODER_STEP 25
-#define ENCODER_RIGHT_STEP_ROTATION -1
-#define ENCODER_LEFT_STEP_ROTATION 1
+#define ENCODER_DEFAULT ENCODER_MAX/2
 
 #define ENCODERS_SIZE 2
 Encoder encoders[ENCODERS_SIZE] = { Encoder(1, 0), Encoder(2, 3) }; // Encoder(CLK, DT)
-long joystickValues[ENCODERS_SIZE] = { ENCODER_MAX/2, ENCODER_MAX/2 };
-long encoderStatus[ENCODERS_SIZE] = { ENCODER_MIN, ENCODER_MIN };
+long encoderRawValues[ENCODERS_SIZE] = { ENCODER_MIN, ENCODER_MIN };
+long encoderValues[ENCODERS_SIZE] = { ENCODER_DEFAULT, ENCODER_DEFAULT };
 
 #define ENCODER_ENABLE_BUTTON 0
 int encoderButton[ENCODERS_SIZE] = { 4, 5 };
 int encoderButtonState[ENCODERS_SIZE] = { LOW, LOW };
 
-const byte ROWS = 2;
-const byte COLS = 4;
+//==========================================================================================
+// MODE SWITCH
+//==========================================================================================
+#define MODE_SWITCH_ENABLE 1
+#define PIN_MODE_SWITCH 15
+int modeSwitchState = LOW;
+
+//==========================================================================================
+// MATRIX BUTTON
+//==========================================================================================
+#define ROWS 2
+#define COLS 4
 char keys[ROWS][COLS] = {
   {'0', '1', '2', '.'},
   {'3', '4', '5', '?'}
 };
-byte rowPins[ROWS] = {16,10};
-byte colPins[COLS] = {6,7,8,9};
+byte rowPins[ROWS] = {16, 10};
+byte colPins[COLS] = {6, 7, 8, 9};
 Keypad kpd = Keypad( makeKeymap(keys), rowPins, colPins, ROWS, COLS );
 
+//==========================================================================================
+// SPARE BUTTON
+//==========================================================================================
 #define SPARE_PINS_SIZE 3
 int sparePin[SPARE_PINS_SIZE] = {4, 5, 14};
 int sparePinState[SPARE_PINS_SIZE] = {LOW, LOW, LOW};
 
-#define MODE_SWITCH_ENABLE 1
-const int pinModeSwitch = 15;
-int modeSwitchState = LOW;
 
 Joystick_ Joystick(
   0x04,     // joystick's unique HID
@@ -72,13 +106,14 @@ void setup(){
   Joystick.setSteeringRange(ENCODER_MIN, ENCODER_MAX);
 
   for( int i=0; i<ENCODERS_SIZE; i++ ){
-    applyValueToJoystick( i, joystickValues[i] );
+    applyValueToJoystick( i, encoderValues[i] );
+    
     if( ENCODER_ENABLE_BUTTON == 1 )
       pinMode(encoderButton[i], INPUT_PULLUP);
   }
 
   if( MODE_SWITCH_ENABLE == 1 ){
-    pinMode(pinModeSwitch, INPUT_PULLUP);
+    pinMode(PIN_MODE_SWITCH, INPUT_PULLUP);
   }
   
   for( int j=0; j<SPARE_PINS_SIZE; j++ ){
@@ -102,30 +137,40 @@ void applyValueToJoystick( int encoderIndex, long value ){
   }
 }
 
-void stepJoystick( int encoderIndex, int rORl ){
-  joystickValues[encoderIndex] += (rORl)*ENCODER_STEP;
-  if( joystickValues[encoderIndex] > ENCODER_MAX ){
-    joystickValues[encoderIndex] = ENCODER_MAX;
-  }else if( joystickValues[encoderIndex] < ENCODER_MIN ){
-    joystickValues[encoderIndex] = ENCODER_MIN;
-  }
-  applyValueToJoystick( encoderIndex, joystickValues[encoderIndex] );
+void stepEncoderRight( int encoderIndex ){
+  stepEncoder( encoderIndex, -1 );
 }
 
+void stepEncoderLeft( int encoderIndex ){
+  stepEncoder( encoderIndex, 1 );
+}
+
+void stepEncoder( int encoderIndex, int rORl ){
+  int newEncoderkValue = encoderValues[encoderIndex] + (rORl)*ENCODER_STEP;
+
+  if( newEncoderkValue > ENCODER_MAX ){
+    newEncoderkValue = ENCODER_MAX;
+    
+  }else if( newEncoderkValue < ENCODER_MIN ){
+    newEncoderkValue = ENCODER_MIN;
+  }
+
+  encoderValues[encoderIndex] = newEncoderkValue;
+  applyValueToJoystick( encoderIndex, encoderValues[encoderIndex] );
+}
 
 void readEncoder( int encoderIndex ){
   long enc_pos = encoders[encoderIndex].read();
   enc_pos /= 4;
   
-  if( enc_pos > encoderStatus[encoderIndex] ){
-    encoderStatus[encoderIndex] = enc_pos;
-    stepJoystick( encoderIndex, ENCODER_RIGHT_STEP_ROTATION ); // right
-    
+  if( enc_pos > encoderRawValues[encoderIndex] ){
+    encoderRawValues[encoderIndex] = enc_pos;
+    stepEncoderRight( encoderIndex );
     if( DEBUG == 1 ) printDebugEncoder( encoderIndex );
-  }else if( enc_pos < encoderStatus[encoderIndex] ){
-    encoderStatus[encoderIndex] = enc_pos;
-    stepJoystick( encoderIndex, ENCODER_LEFT_STEP_ROTATION ); // left
     
+  }else if( enc_pos < encoderRawValues[encoderIndex] ){
+    encoderRawValues[encoderIndex] = enc_pos;
+    stepEncoderLeft( encoderIndex );
     if( DEBUG == 1 ) printDebugEncoder( encoderIndex );
   }
 }
@@ -136,7 +181,6 @@ int convertChar2KeyStroke( char c ){
   for( int i=0; i<ROWS; i++ ){
     for( int j=0; j<COLS; j++ ){
       if( c == keys[i][j] ) return convertInput2KeyStroke(count, 0, rowsTimesColumns); 
-      //return count+(modeSwitchState*rowsTimesColumns);      
       count++;
     }
   }
@@ -148,15 +192,15 @@ int convertInput2KeyStroke( int base, int i, int span ){
 
 void printDebugEncoder( int encoderIndex ){
   Serial.print(encoderIndex); Serial.print(" - ");
-  Serial.print(encoderStatus[encoderIndex]); Serial.print(" - ");
-  Serial.println(joystickValues[encoderIndex]);
+  Serial.print(encoderRawValues[encoderIndex]); Serial.print(" - ");
+  Serial.println(encoderValues[encoderIndex]);
 }
 
 void printDebugSwitchState(){
   Serial.print("switch state: "); Serial.println(modeSwitchState);
 }
 
-void printDebugButtonMatrix( char* message, char keyEvent ){
+void printDebugButtonMatrix( const char* message, char keyEvent ){
   Serial.print(message); Serial.print(" ");
   Serial.print(keyEvent); Serial.print(" ");
   Serial.println(convertChar2KeyStroke(keyEvent));
@@ -164,7 +208,7 @@ void printDebugButtonMatrix( char* message, char keyEvent ){
 
 void loop(){
   // READING MODE SWITCH
-  int currentSwitchState = !digitalRead(pinModeSwitch);
+  int currentSwitchState = !digitalRead(PIN_MODE_SWITCH);
   if( currentSwitchState != modeSwitchState ){
     modeSwitchState = currentSwitchState;
     
@@ -191,6 +235,7 @@ void loop(){
         else if( encoderButtonState[i] == LOW ) Joystick.setButton(convertInput2KeyStroke(31, i, 2), 0);
       }
     }
+    
     readEncoder(i);
   }
 
