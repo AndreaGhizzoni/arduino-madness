@@ -8,15 +8,15 @@ const long ENCODER_MAX = 1023;
 const long ENCODER_STEP = 25;
 const int RIGHT_ROTATION = -1;
 const int LEFT_ROTATION = 1;
-const int SIZE_OF_ENCODERS = 3;
+const int SIZE_OF_ENCODERS = 1;
 // Encoder(CLK_pin, DT_pin)
-Encoder encoders[SIZE_OF_ENCODERS] = { Encoder(1, 0), Encoder(2, 3), Encoder(4, 5) };
-long encoderStatus[SIZE_OF_ENCODERS] = { 0, 0, 0 };
-long encodedValues[SIZE_OF_ENCODERS] = { ENCODER_MAX/2, ENCODER_MAX/2, ENCODER_MAX/2 };
+Encoder encoders[SIZE_OF_ENCODERS] = { Encoder(2, 3) };
+long encoderStatus[SIZE_OF_ENCODERS] = { 0 };
+long encodedValues[SIZE_OF_ENCODERS] = { ENCODER_MAX/2 };
 
 
 void setup(){
-  Serial.begin(2000000);
+  Serial.begin(9600);
 }
 
 void stepEncoder( int encoderIndex, int rORl ){
